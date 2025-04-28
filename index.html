@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>Manuscript Collations</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #viewer { width: 100%; height: 90vh; border: 1px solid #ccc; margin-top: 1em; }
+  </style>
+</head>
+<body>
+  <h1>Collation Viewer</h1>
+  <label for="fileSelect">Bir HTML dosyası seçin:</label>
+  <select id="fileSelect">
+    <!-- JS ile doldurulacak -->
+  </select>
+
+  <iframe id="viewer" src="" frameborder="0"></iframe>
+
+  <script>
+    // 1) Buraya 34 dosya adını tek tek yazabilirsiniz:
+    const files = [
+      'file1.html',
+      'file2.html',
+      // …
+      'file34.html'
+    ].map(f => 'html_files/' + f);
+
+    // 2) <select>i doldur
+    const sel = document.getElementById('fileSelect');
+    files.forEach(path => {
+      const opt = document.createElement('option');
+      opt.value = path;
+      opt.text  = path.split('/').pop();
+      sel.appendChild(opt);
+    });
+
+    // 3) Seçince iframe’i değiştir
+    sel.addEventListener('change', () => {
+      document.getElementById('viewer').src = sel.value;
+    });
+
+    // 4) Sayfa yüklendiğinde ilkini göster
+    if (files.length) {
+      sel.value = files[0];
+      document.getElementById('viewer').src = files[0];
+    }
+  </script>
+</body>
+</html>
