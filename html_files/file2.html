@@ -106,7 +106,7 @@
 
     document.querySelectorAll('th').forEach((th, i) => {
       const M = +th.dataset.miladi || 0, H = +th.dataset.hicri || 0;
-      const ok = sel.includes(th.dataset.header)
+      const ok = sel.includes(th.dataset.nusha)
               && M >= minM && M <= maxM
               && H >= minH && H <= maxH
               && must.includes(th.dataset.mustensih)
@@ -124,32 +124,29 @@
 
   function applyDiffs() {
   document.querySelectorAll('tbody tr').forEach(tr => {
-    // 1) Visible olanları al, sonra da '---' içerenleri filtrele
+    // sadece görünür ve placeholder olmayan hücreleri al
     const visible = Array.from(tr.children)
       .filter(td => td.style.display !== 'none')
-      .filter(td => td.dataset.raw !== '---');
+      .filter(td => td.dataset.raw && td.dataset.raw.trim() !== '---');
+
     if (visible.length < 2) return;
 
-    // 2) Hepsini önce data-raw ile temizle
+    // önce tüm hücreleri raw hâline döndür
     visible.forEach(td => td.innerHTML = td.dataset.raw);
 
-    // 3) Majority text’i bul (--- artık yok)
+
+    // majority text’i bul
     const counts = {};
-    visible.forEach(td => {
-      counts[td.dataset.raw] = (counts[td.dataset.raw]||0) + 1;
-    });
+    visible.forEach(td => counts[td.dataset.raw] = (counts[td.dataset.raw]||0) + 1);
     let majorityText = visible[0].dataset.raw, maxc = 0;
     for (let txt in counts) {
-      if (counts[txt] > maxc) {
-        maxc = counts[txt];
-        majorityText = txt;
-      }
+      if (counts[txt] > maxc) { maxc = counts[txt]; majorityText = txt; }
     }
 
-    // 4) Majority kelimeleri
+    // majority token’ları
     const majWords = majorityText.split(/\s+/);
 
-    // 5) Farklı pozisyonları tespit et
+    // hangi pozisyonlarda farklılık var?
     const diffPositions = new Set();
     visible.forEach(td => {
       if (td.dataset.raw !== majorityText) {
@@ -160,16 +157,17 @@
       }
     });
 
-    // 6) Highlight uygula
+    // her hücreye uygula
     visible.forEach(td => {
       if (td.dataset.raw === majorityText) {
+        // majority hücrelerinde yeşille işaretle
         td.innerHTML = majWords
-          .map((w, i) =>
-            diffPositions.has(i)
-              ? `<span class="majority-word">${w}</span>`
-              : w
+          .map((w,i) => diffPositions.has(i)
+            ? `<span class="majority-word">${w}</span>`
+            : w
           ).join(" ");
       } else {
+        // varyant hücrelerde sarıyla highlight
         td.innerHTML = wordDiff(majorityText, td.dataset.raw);
       }
     });
@@ -197,17 +195,17 @@
 <h1>Collation Table</h1>
 <div><button id='diff-btn' onclick='toggleDiff()'>Show Differences</button></div>
 <div class='filters'>
-<details open><summary>Şiir Adı</summary><div class='ms-filter'>
-<label><input type='checkbox' value='2_tiem_1959_kaside_3b-5a_biḥamdi 'll​āh şeref buldı yine mülk-i süleymānī ' checked onchange='applyFilters()'> biḥamdi 'll​āh şeref buldı yine mülk-i süleymānī </label> 
-<label><input type='checkbox' value='6_06mil_yza_3009_kaside_7a-8a_biḥamdi 'll​āh şeref buldı yine mülk-i süleym_EI97' checked onchange='applyFilters()'> EI97</label> 
-<label><input type='checkbox' value='1_iü_t_5523_kaside_1b-3a_biḥamdi 'll​āh şeref buldı yine mülk-i süleymānī ' checked onchange='applyFilters()'> biḥamdi 'll​āh şeref buldı yine mülk-i süleymānī </label> 
-<label><input type='checkbox' value='12_sül_hm_3298_kaside_182b-183b_biḥamdi 'll_āh şeref buldı yine mülk-i süleymānī' checked onchange='applyFilters()'> āh şeref buldı yine mülk-i süleymānī</label> 
-<label><input type='checkbox' value='5_bnf_tc_356_kaside_4b-5b_biḥamdi 'll​āh şeref buldı yine mülk-i süleymānī ' checked onchange='applyFilters()'> biḥamdi 'll​āh şeref buldı yine mülk-i süleymānī </label> 
-<label><input type='checkbox' value='5_iu_t_3864_kaside_8a-9b_biḥamdi 'llāh şeref buldı yine mülk-i süleymānī' checked onchange='applyFilters()'> biḥamdi 'llāh şeref buldı yine mülk-i süleymānī</label> 
-<label><input type='checkbox' value='10_iu_t_2853_kaside_8b-10a_biḥamdi 'll_āh şeref buldı yine mülk-i süleymānī' checked onchange='applyFilters()'> āh şeref buldı yine mülk-i süleymānī</label> 
-<label><input type='checkbox' value='6_iae_sr_46_kaside_7a-8b_biḥamdi 'llāh şeref buldı yine mülk-i süleymānī' checked onchange='applyFilters()'> biḥamdi 'llāh şeref buldı yine mülk-i süleymānī</label> 
-<label><input type='checkbox' value='4_06mil_yza_6302_kaside_4a-5b_biḥamdi 'll_āh şeref buldı yine mülk-i süleymānī' checked onchange='applyFilters()'> āh şeref buldı yine mülk-i süleymānī</label> 
-<label><input type='checkbox' value='5_iae_sr_85_kaside_6b-8a_biḥamdi 'll​āh şeref buldı yine mülk-i süleymānī ' checked onchange='applyFilters()'> biḥamdi 'll​āh şeref buldı yine mülk-i süleymānī </label> 
+<details open><summary>Nüsha Adı</summary><div class='ms-filter'>
+<label><input type='checkbox' value='1572 Tarihli İÜ nüshası' checked onchange='applyFilters()'> 1572 Tarihli İÜ nüshası</label> 
+<label><input type='checkbox' value='1580 Tarihli İAE-ŞR nüshasının transkripsiyonları' checked onchange='applyFilters()'> 1580 Tarihli İAE-ŞR nüshasının transkripsiyonları</label> 
+<label><input type='checkbox' value='1582 Tarihli Milli Ktp.Nüshası' checked onchange='applyFilters()'> 1582 Tarihli Milli Ktp.Nüshası</label> 
+<label><input type='checkbox' value='1582 Tarihli İÜ nüshası' checked onchange='applyFilters()'> 1582 Tarihli İÜ nüshası</label> 
+<label><input type='checkbox' value='1586 Tarihli Milli Ktp. Nüshası' checked onchange='applyFilters()'> 1586 Tarihli Milli Ktp. Nüshası</label> 
+<label><input type='checkbox' value='1588 Tarihli İAE-ŞR Nüshası' checked onchange='applyFilters()'> 1588 Tarihli İAE-ŞR Nüshası</label> 
+<label><input type='checkbox' value='1592 Tarihli Süleymaniye Nüshası (Hacı Mahmud)' checked onchange='applyFilters()'> 1592 Tarihli Süleymaniye Nüshası (Hacı Mahmud)</label> 
+<label><input type='checkbox' value='1594 Tarihli Fransa Milli Kütüphane Nüshası' checked onchange='applyFilters()'> 1594 Tarihli Fransa Milli Kütüphane Nüshası</label> 
+<label><input type='checkbox' value='1595 Tarihli Türk İslam Eserleri Müzesi Nüshası' checked onchange='applyFilters()'> 1595 Tarihli Türk İslam Eserleri Müzesi Nüshası</label> 
+<label><input type='checkbox' value='1598 Tarihli İÜ Nüshası' checked onchange='applyFilters()'> 1598 Tarihli İÜ Nüshası</label> 
 </div></details>
 
 <details><summary>Yıl Aralığı</summary>

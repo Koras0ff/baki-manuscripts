@@ -106,7 +106,7 @@
 
     document.querySelectorAll('th').forEach((th, i) => {
       const M = +th.dataset.miladi || 0, H = +th.dataset.hicri || 0;
-      const ok = sel.includes(th.dataset.header)
+      const ok = sel.includes(th.dataset.nusha)
               && M >= minM && M <= maxM
               && H >= minH && H <= maxH
               && must.includes(th.dataset.mustensih)
@@ -124,32 +124,29 @@
 
   function applyDiffs() {
   document.querySelectorAll('tbody tr').forEach(tr => {
-    // 1) Visible olanları al, sonra da '---' içerenleri filtrele
+    // sadece görünür ve placeholder olmayan hücreleri al
     const visible = Array.from(tr.children)
       .filter(td => td.style.display !== 'none')
-      .filter(td => td.dataset.raw !== '---');
+      .filter(td => td.dataset.raw && td.dataset.raw.trim() !== '---');
+
     if (visible.length < 2) return;
 
-    // 2) Hepsini önce data-raw ile temizle
+    // önce tüm hücreleri raw hâline döndür
     visible.forEach(td => td.innerHTML = td.dataset.raw);
 
-    // 3) Majority text’i bul (--- artık yok)
+
+    // majority text’i bul
     const counts = {};
-    visible.forEach(td => {
-      counts[td.dataset.raw] = (counts[td.dataset.raw]||0) + 1;
-    });
+    visible.forEach(td => counts[td.dataset.raw] = (counts[td.dataset.raw]||0) + 1);
     let majorityText = visible[0].dataset.raw, maxc = 0;
     for (let txt in counts) {
-      if (counts[txt] > maxc) {
-        maxc = counts[txt];
-        majorityText = txt;
-      }
+      if (counts[txt] > maxc) { maxc = counts[txt]; majorityText = txt; }
     }
 
-    // 4) Majority kelimeleri
+    // majority token’ları
     const majWords = majorityText.split(/\s+/);
 
-    // 5) Farklı pozisyonları tespit et
+    // hangi pozisyonlarda farklılık var?
     const diffPositions = new Set();
     visible.forEach(td => {
       if (td.dataset.raw !== majorityText) {
@@ -160,16 +157,17 @@
       }
     });
 
-    // 6) Highlight uygula
+    // her hücreye uygula
     visible.forEach(td => {
       if (td.dataset.raw === majorityText) {
+        // majority hücrelerinde yeşille işaretle
         td.innerHTML = majWords
-          .map((w, i) =>
-            diffPositions.has(i)
-              ? `<span class="majority-word">${w}</span>`
-              : w
+          .map((w,i) => diffPositions.has(i)
+            ? `<span class="majority-word">${w}</span>`
+            : w
           ).join(" ");
       } else {
+        // varyant hücrelerde sarıyla highlight
         td.innerHTML = wordDiff(majorityText, td.dataset.raw);
       }
     });
@@ -197,8 +195,8 @@
 <h1>Collation Table</h1>
 <div><button id='diff-btn' onclick='toggleDiff()'>Show Differences</button></div>
 <div class='filters'>
-<details open><summary>Şiir Adı</summary><div class='ms-filter'>
-<label><input type='checkbox' value='1_06mil_yza_6302_kaside_1b_hengām-ı şeb ki küngüre-i ḳaṣr-ı āsmān' checked onchange='applyFilters()'> hengām-ı şeb ki küngüre-i ḳaṣr-ı āsmān</label> 
+<details open><summary>Nüsha Adı</summary><div class='ms-filter'>
+<label><input type='checkbox' value='1582 Tarihli Milli Ktp.Nüshası' checked onchange='applyFilters()'> 1582 Tarihli Milli Ktp.Nüshası</label> 
 </div></details>
 
 <details><summary>Yıl Aralığı</summary>
