@@ -10,7 +10,15 @@
 </head>
 <body>
   <h1>Manuscript Viewer</h1>
-  <label for="fileSelect">Bir HTML dosyası seçin:</label>
+    <p id="instructions">
+    This interface contains the line-by-line alignments of a total of 259 poems from 13 different manuscripts of the Divan poet Bâkî (1526/27–1600).
+      Through this interface, users can view how individual lines of the same "core poem" appear in different manuscripts.
+      These variant poems for the "core poems" were clustered using TF-IDF scores, and users can explore the aligned lines of all the poems in each cluster.
+      Differences are highlighted at the word level: majority variants are marked in green, while minority variants are marked in yellow.
+      Users can also filter the poems by specific manuscripts or date range.
+  </p>
+  
+  <label for="fileSelect">Choose a poem cluster:</label>
   <select id="fileSelect">
   </select>
 
