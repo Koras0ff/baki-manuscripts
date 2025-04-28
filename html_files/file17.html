@@ -39,6 +39,13 @@
     background: #fffb8f;
   }
 
+  /* highlight majority words at diff positions */
+.majority-word {
+  background: #baffba;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
   /* highlight individual differing words */
   .diff-word {
     background: #fffb8f;
@@ -116,34 +123,58 @@
   }
 
   function applyDiffs() {
-    document.querySelectorAll('tbody tr').forEach(tr => {
-      const visible = Array.from(tr.children).filter(td => td.style.display !== 'none');
-      if (visible.length < 2) return;
+  document.querySelectorAll('tbody tr').forEach(tr => {
+    // 1) Visible olanları al, sonra da '---' içerenleri filtrele
+    const visible = Array.from(tr.children)
+      .filter(td => td.style.display !== 'none')
+      .filter(td => td.dataset.raw !== '---');
+    if (visible.length < 2) return;
 
-      // reset to raw text
-      visible.forEach(td => td.innerHTML = td.dataset.raw);
+    // 2) Hepsini önce data-raw ile temizle
+    visible.forEach(td => td.innerHTML = td.dataset.raw);
 
-      // count occurrences to find majority text
-      const counts = {};
-      visible.forEach(td => {
-        counts[td.dataset.raw] = (counts[td.dataset.raw] || 0) + 1;
-      });
-      let majority = visible[0].dataset.raw, maxc = 0;
-      for (let txt in counts) {
-        if (counts[txt] > maxc) {
-          maxc = counts[txt];
-          majority = txt;
-        }
-      }
-
-      // highlight differing words
-      visible.forEach(td => {
-        if (td.dataset.raw !== majority) {
-          td.innerHTML = wordDiff(majority, td.dataset.raw);
-        }
-      });
+    // 3) Majority text’i bul (--- artık yok)
+    const counts = {};
+    visible.forEach(td => {
+      counts[td.dataset.raw] = (counts[td.dataset.raw]||0) + 1;
     });
-  }
+    let majorityText = visible[0].dataset.raw, maxc = 0;
+    for (let txt in counts) {
+      if (counts[txt] > maxc) {
+        maxc = counts[txt];
+        majorityText = txt;
+      }
+    }
+
+    // 4) Majority kelimeleri
+    const majWords = majorityText.split(/\s+/);
+
+    // 5) Farklı pozisyonları tespit et
+    const diffPositions = new Set();
+    visible.forEach(td => {
+      if (td.dataset.raw !== majorityText) {
+        const words = td.dataset.raw.split(/\s+/);
+        words.forEach((w, i) => {
+          if (majWords[i] !== w) diffPositions.add(i);
+        });
+      }
+    });
+
+    // 6) Highlight uygula
+    visible.forEach(td => {
+      if (td.dataset.raw === majorityText) {
+        td.innerHTML = majWords
+          .map((w, i) =>
+            diffPositions.has(i)
+              ? `<span class="majority-word">${w}</span>`
+              : w
+          ).join(" ");
+      } else {
+        td.innerHTML = wordDiff(majorityText, td.dataset.raw);
+      }
+    });
+  });
+}
 
   function toggleDiff() {
     diffMode = !diffMode;
