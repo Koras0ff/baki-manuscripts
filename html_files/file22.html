@@ -1,0 +1,584 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'><title>Collation</title>
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+  }
+
+  details {
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    padding: 6px;
+    border-radius: 4px;
+  }
+
+  summary {
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+
+  th,
+  td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    white-space: nowrap;
+  }
+
+  th {
+    background: #f9f9f9;
+  }
+
+  /* whole-cell highlight for differing cells */
+  .diff {
+    background: #fffb8f;
+  }
+
+  /* highlight individual differing words */
+  .diff-word {
+    background: #fffb8f;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+</style>
+
+<script>
+  let diffMode = false;
+
+  // Compute word‐level diffs via LCS and wrap non-matching words
+  function wordDiff(refText, text) {
+    const refWords = refText.split(/\s+/);
+    const words    = text.split(/\s+/);
+    const m = refWords.length, n = words.length;
+    // build LCS table
+    const dp = Array(m+1).fill().map(() => Array(n+1).fill(0));
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (refWords[i-1] === words[j-1]) {
+          dp[i][j] = dp[i-1][j-1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+        }
+      }
+    }
+    // backtrack to find matching positions in `words`
+    let i = m, j = n, matches = [];
+    while (i > 0 && j > 0) {
+      if (refWords[i-1] === words[j-1]) {
+        matches.push(j-1);
+        i--; j--;
+      } else if (dp[i-1][j] >= dp[i][j-1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+    const matchSet = new Set(matches);
+    // rebuild with spans for non-matches
+    return words.map((w, idx) =>
+      matchSet.has(idx)
+        ? w
+        : `<span class="diff-word">${w}</span>`
+    ).join(" ");
+  }
+
+  function applyFilters() {
+    const sel   = Array.from(document.querySelectorAll('.ms-filter input:checked')).map(c => c.value);
+    const minM  = +document.getElementById('mil-min').value, maxM = +document.getElementById('mil-max').value;
+    const minH  = +document.getElementById('hic-min').value, maxH = +document.getElementById('hic-max').value;
+    const must  = Array.from(document.querySelectorAll('.must-filter input:checked')).map(c => c.value);
+    const derk  = Array.from(document.querySelectorAll('.derk-filter input:checked')).map(c => c.value);
+    const typs  = Array.from(document.querySelectorAll('.typ-filter input:checked')).map(c => c.value);
+    const muels = Array.from(document.querySelectorAll('.muel-filter input:checked')).map(c => c.value);
+    const frms  = Array.from(document.querySelectorAll('.frm-filter input:checked')).map(c => c.value);
+
+    document.querySelectorAll('th').forEach((th, i) => {
+      const M = +th.dataset.miladi || 0, H = +th.dataset.hicri || 0;
+      const ok = sel.includes(th.dataset.header)
+              && M >= minM && M <= maxM
+              && H >= minH && H <= maxH
+              && must.includes(th.dataset.mustensih)
+              && derk.includes(th.dataset.derkenar)
+              && typs.includes(th.dataset.tur)
+              && muels.includes(th.dataset.muellif)
+              && frms.includes(th.dataset.form);
+      document.querySelectorAll('tr').forEach(r => {
+        if (r.children[i]) r.children[i].style.display = ok ? '' : 'none';
+      });
+    });
+
+    if (diffMode) applyDiffs();
+  }
+
+  function applyDiffs() {
+    document.querySelectorAll('tbody tr').forEach(tr => {
+      const visible = Array.from(tr.children).filter(td => td.style.display !== 'none');
+      if (visible.length < 2) return;
+
+      // reset to raw text
+      visible.forEach(td => td.innerHTML = td.dataset.raw);
+
+      // count occurrences to find majority text
+      const counts = {};
+      visible.forEach(td => {
+        counts[td.dataset.raw] = (counts[td.dataset.raw] || 0) + 1;
+      });
+      let majority = visible[0].dataset.raw, maxc = 0;
+      for (let txt in counts) {
+        if (counts[txt] > maxc) {
+          maxc = counts[txt];
+          majority = txt;
+        }
+      }
+
+      // highlight differing words
+      visible.forEach(td => {
+        if (td.dataset.raw !== majority) {
+          td.innerHTML = wordDiff(majority, td.dataset.raw);
+        }
+      });
+    });
+  }
+
+  function toggleDiff() {
+    diffMode = !diffMode;
+    document.getElementById('diff-btn').innerText =
+      diffMode ? 'Hide Differences' : 'Show Differences';
+    if (diffMode) {
+      applyDiffs();
+    } else {
+      // restore plain text for all visible cells
+      document.querySelectorAll('tbody tr').forEach(tr => {
+        Array.from(tr.children)
+          .filter(td => td.style.display !== 'none')
+          .forEach(td => td.innerHTML = td.dataset.raw);
+      });
+    }
+  }
+</script>
+
+</head><body>
+<h1>Collation Table</h1>
+<div><button id='diff-btn' onclick='toggleDiff()'>Show Differences</button></div>
+<div class='filters'>
+<details open><summary>Şiir Adı</summary><div class='ms-filter'>
+<label><input type='checkbox' value='5_iae_sr_46_kaside_6b-7a_cihān-ı maʿdelet kān-ı mürüvvet' checked onchange='applyFilters()'> cihān-ı maʿdelet kān-ı mürüvvet</label> 
+<label><input type='checkbox' value='2_iu_t_2853_kaside_2b-3a_cihān-ı maʿdelet kān-ı mürüvvet' checked onchange='applyFilters()'> cihān-ı maʿdelet kān-ı mürüvvet</label> 
+<label><input type='checkbox' value='17_iü_t_5523_kaside_26a-27a_cihān-ı maʿdelet kān-ı mürüvvet' checked onchange='applyFilters()'> cihān-ı maʿdelet kān-ı mürüvvet</label> 
+<label><input type='checkbox' value='4_iu_t_3864_kaside_7b_egerçi noḳṭadur ṣūretde anlar' checked onchange='applyFilters()'> egerçi noḳṭadur ṣūretde anlar</label> 
+<label><input type='checkbox' value='4_iae_sr_85_kaside_6a-6b_cihān-ı maʿdelet kān-ı mürüvvet' checked onchange='applyFilters()'> cihān-ı maʿdelet kān-ı mürüvvet</label> 
+<label><input type='checkbox' value='15_06mil_yza_3009_kaside_17b-18a_cihān-ı maʿdelet kān-ı mürüvvet' checked onchange='applyFilters()'> cihān-ı maʿdelet kān-ı mürüvvet</label> 
+<label><input type='checkbox' value='4_bnf_tc_356_kaside_4a-4b_cihān-ı maʿdelet kān-ı mürüvvet' checked onchange='applyFilters()'> cihān-ı maʿdelet kān-ı mürüvvet</label> 
+<label><input type='checkbox' value='5_tiem_1959_kaside_9a-10a_cihān-ı maʿdelet kān-ı mürüvvet' checked onchange='applyFilters()'> cihān-ı maʿdelet kān-ı mürüvvet</label> 
+</div></details>
+
+<details><summary>Yıl Aralığı</summary>
+  <div>
+    Miladi: From <input id='mil-min' type='number' value='1572' min='1572' max='1598' onchange='applyFilters()'>
+           To <input id='mil-max' type='number' value='1598' min='1572' max='1598' onchange='applyFilters()'><br>
+    Hicri: From <input id='hic-min' type='number' value='979' min='979' max='1006' onchange='applyFilters()'>
+           To <input id='hic-max' type='number' value='1006' min='979' max='1006' onchange='applyFilters()'>
+  </div>
+</details>
+
+<details><summary>Müstensih</summary><div class='must-filter'><label><input type='checkbox' value='Bilinmiyor' checked onchange='applyFilters()'> Bilinmiyor</label> <label><input type='checkbox' value='Var' checked onchange='applyFilters()'> Var</label> </div></details>
+<details><summary>Derkenar</summary><div class='derk-filter'><label><input type='checkbox' value='Var' checked onchange='applyFilters()'> Var</label> <label><input type='checkbox' value='Yok' checked onchange='applyFilters()'> Yok</label> </div></details>
+<details><summary>Tür</summary><div class='typ-filter'><label><input type='checkbox' value='kaside' checked onchange='applyFilters()'> kaside</label> </div></details>
+<details><summary>Müellif</summary><div class='muel-filter'><label><input type='checkbox' value='Bâkî' checked onchange='applyFilters()'> Bâkî</label> </div></details>
+<details><summary>Form</summary><div class='frm-filter'><label><input type='checkbox' value='Yazma' checked onchange='applyFilters()'> Yazma</label> </div></details>
+</div><hr><table><thead><tr>
+<th data-header='5_iae_sr_46_kaside_6b-7a_cihān-ı maʿdelet kān-ı mürüvvet' data-miladi='1580' data-hicri='987' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>cihān-ı maʿdelet kān-ı mürüvvet<br>Sıra:5 Tür:kaside<br>Miladi:1580 Hicri:987<br>Kütüphane:iae Koleksiyon:sr<br>Küt.ID:iae_1580_1<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:6b-7a Form:Yazma<br>Derkenar:Yok<br>Başlık:Yok<br>Notlar:</th>
+<th data-header='2_iu_t_2853_kaside_2b-3a_cihān-ı maʿdelet kān-ı mürüvvet' data-miladi='1582' data-hicri='989' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>cihān-ı maʿdelet kān-ı mürüvvet<br>Sıra:2 Tür:kaside<br>Miladi:1582 Hicri:989<br>Kütüphane:iu Koleksiyon:t<br>Küt.ID:iu_1582_2<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:2b-3a Form:Yazma<br>Derkenar:Yok<br>Başlık:Yok<br>Notlar:</th>
+<th data-header='17_iü_t_5523_kaside_26a-27a_cihān-ı maʿdelet kān-ı mürüvvet' data-miladi='1598' data-hicri='1006' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>cihān-ı maʿdelet kān-ı mürüvvet<br>Sıra:17 Tür:kaside<br>Miladi:1598 Hicri:1006<br>Kütüphane:iü Koleksiyon:t<br>Küt.ID:iü_1598_3<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:26a-27a Form:Yazma<br>Derkenar:Yok<br>Başlık:Yok<br>Notlar:</th>
+<th data-header='4_iu_t_3864_kaside_7b_egerçi noḳṭadur ṣūretde anlar' data-miladi='1572' data-hicri='979' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>egerçi noḳṭadur ṣūretde anlar<br>Sıra:4 Tür:kaside<br>Miladi:1572 Hicri:979<br>Kütüphane:iu Koleksiyon:t<br>Küt.ID:iu_1572_4<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:7b Form:Yazma<br>Derkenar:Yok<br>Başlık:Yok<br>Notlar:(İlk 9 beyiti eksik, varak kopuk)</th>
+<th data-header='4_iae_sr_85_kaside_6a-6b_cihān-ı maʿdelet kān-ı mürüvvet' data-miladi='1588' data-hicri='996' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>cihān-ı maʿdelet kān-ı mürüvvet<br>Sıra:4 Tür:kaside<br>Miladi:1588 Hicri:996<br>Kütüphane:iae Koleksiyon:sr<br>Küt.ID:iae_1588_5<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:6a-6b Form:Yazma<br>Derkenar:Yok<br>Başlık:cihān-ı maʿdelet kān-ı mürüvvet<br>Notlar:</th>
+<th data-header='15_06mil_yza_3009_kaside_17b-18a_cihān-ı maʿdelet kān-ı mürüvvet' data-miladi='1586' data-hicri='994' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>cihān-ı maʿdelet kān-ı mürüvvet<br>Sıra:15 Tür:kaside<br>Miladi:1586 Hicri:994<br>Kütüphane:06mil Koleksiyon:yza<br>Küt.ID:06mil_1586_6<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:17b-18a Form:Yazma<br>Derkenar:Yok<br>Başlık:cihān-ı maʿdelet kān-ı mürüvvet<br>Notlar:</th>
+<th data-header='4_bnf_tc_356_kaside_4a-4b_cihān-ı maʿdelet kān-ı mürüvvet' data-miladi='1594' data-hicri='1002' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>cihān-ı maʿdelet kān-ı mürüvvet<br>Sıra:4 Tür:kaside<br>Miladi:1594 Hicri:1002<br>Kütüphane:bnf Koleksiyon:tc<br>Küt.ID:bnf_1594_7<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:4a-4b Form:Yazma<br>Derkenar:Yok<br>Başlık:Yok<br>Notlar:</th>
+<th data-header='5_tiem_1959_kaside_9a-10a_cihān-ı maʿdelet kān-ı mürüvvet' data-miladi='1595' data-hicri='1003' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>cihān-ı maʿdelet kān-ı mürüvvet<br>Sıra:5 Tür:kaside<br>Miladi:1595 Hicri:1003<br>Kütüphane:tiem Koleksiyon:1959<br>Küt.ID:tiem_1595_8<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:9a-10a Form:Yazma<br>Derkenar:Yok<br>Başlık:Yok<br>Notlar:</th>
+</tr></thead><tbody>
+<tr>
+<td data-raw="cihān-ı maʿdelet kān-ı mürüvvet">cihān-ı maʿdelet kān-ı mürüvvet</td>
+<td data-raw="cihān-ı maʿdelet kān-ı mürüvvet">cihān-ı maʿdelet kān-ı mürüvvet</td>
+<td data-raw="cihān-ı maʿdelet kān-ı mürüvvet">cihān-ı maʿdelet kān-ı mürüvvet</td>
+<td data-raw="---">---</td>
+<td data-raw="cihān-ı maʿdelet kān-ı mürüvvet">cihān-ı maʿdelet kān-ı mürüvvet</td>
+<td data-raw="cihān-ı maʿdelet kān-ı mürüvvet">cihān-ı maʿdelet kān-ı mürüvvet</td>
+<td data-raw="cihān-ı maʿdelet kān-ı mürüvvet">cihān-ı maʿdelet kān-ı mürüvvet</td>
+<td data-raw="cihān-ı maʿdelet kān-ı mürüvvet">cihān-ı maʿdelet kān-ı mürüvvet</td>
+</tr>
+<tr>
+<td data-raw="penāh-ı dīn ü devlet nuṣratü 'd-d​īn">penāh-ı dīn ü devlet nuṣratü 'd-d​īn</td>
+<td data-raw="penāh-ı mülk ü millet nuṣratü 'd-d​īn">penāh-ı mülk ü millet nuṣratü 'd-d​īn</td>
+<td data-raw="penāh-ı mülk ü millet nuṣratü 'd-d​īn">penāh-ı mülk ü millet nuṣratü 'd-d​īn</td>
+<td data-raw="---">---</td>
+<td data-raw="penāh-ı mülk ü devlet nuṣratü 'd-d​īn">penāh-ı mülk ü devlet nuṣratü 'd-d​īn</td>
+<td data-raw="penāh-ı mülk ü millet nuṣratü 'd-d​īn">penāh-ı mülk ü millet nuṣratü 'd-d​īn</td>
+<td data-raw="penāh-ı mülk ü millet nuṣratü 'd-d​īn">penāh-ı mülk ü millet nuṣratü 'd-d​īn</td>
+<td data-raw="penāh-ı mülk ü millet nuṣratü 'd-d​īn">penāh-ı mülk ü millet nuṣratü 'd-d​īn</td>
+</tr>
+<tr>
+<td data-raw="şeh-i ʿādil süleymān ẖān-ı ġāzī">şeh-i ʿādil süleymān ẖān-ı ġāzī</td>
+<td data-raw="şeh-i ʿādil süleymān ẖān-ı ġāzī">şeh-i ʿādil süleymān ẖān-ı ġāzī</td>
+<td data-raw="şeh-i ʿādil süleymān ẖān-ı ġāzī">şeh-i ʿādil süleymān ẖān-ı ġāzī</td>
+<td data-raw="---">---</td>
+<td data-raw="şeh-i ʿādil süleymān ẖān-ı ġāzī">şeh-i ʿādil süleymān ẖān-ı ġāzī</td>
+<td data-raw="şeh-i ʿādil süleymān ẖān-ı ġāzī">şeh-i ʿādil süleymān ẖān-ı ġāzī</td>
+<td data-raw="şeh-i ʿādil süleymān ẖān-ı ġāzī">şeh-i ʿādil süleymān ẖān-ı ġāzī</td>
+<td data-raw="şeh-i ʿādil süleymān ẖān-ı ġāzī">şeh-i ʿādil süleymān ẖān-ı ġāzī</td>
+</tr>
+<tr>
+<td data-raw="muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn">muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn</td>
+<td data-raw="muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn">muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn</td>
+<td data-raw="muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn">muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn</td>
+<td data-raw="---">---</td>
+<td data-raw="muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn">muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn</td>
+<td data-raw="muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn">muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn</td>
+<td data-raw="muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn">muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn</td>
+<td data-raw="muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn">muʿizzü 'd-d​evle sulṭānü 's-s​elāṭīn</td>
+</tr>
+<tr>
+<td data-raw="ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı">ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı</td>
+<td data-raw="ne ẖōş ḳıldı görüñ āŝār-ı luṭfı">ne ẖōş ḳıldı görüñ āŝār-ı luṭfı</td>
+<td data-raw="ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı">ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı</td>
+<td data-raw="---">---</td>
+<td data-raw="ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı">ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı</td>
+<td data-raw="ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı">ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı</td>
+<td data-raw="ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı">ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı</td>
+<td data-raw="ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı">ne ẖōş ḳıldı gö​rüñ āŝār-ı luṭfı</td>
+</tr>
+<tr>
+<td data-raw="cihān-ı ṣūret ü maʿnāyı tezyin">cihān-ı ṣūret ü maʿnāyı tezyin</td>
+<td data-raw="cihān-ı ṣūret ü maʿnāyı tezyīn">cihān-ı ṣūret ü maʿnāyı tezyīn</td>
+<td data-raw="cihān-ı ṣūret ü maʿnāyı tezyin">cihān-ı ṣūret ü maʿnāyı tezyin</td>
+<td data-raw="---">---</td>
+<td data-raw="cihān-ı ṣūret ü maʿnāyı tezyin">cihān-ı ṣūret ü maʿnāyı tezyin</td>
+<td data-raw="cihān-ı ṣūret ü maʿnāyı tezyin">cihān-ı ṣūret ü maʿnāyı tezyin</td>
+<td data-raw="cihān-ı ṣūret ü maʿnāyı tezyin">cihān-ı ṣūret ü maʿnāyı tezyin</td>
+<td data-raw="cihān-ı ṣūret ü maʿnāyı tezyin">cihān-ı ṣūret ü maʿnāyı tezyin</td>
+</tr>
+<tr>
+<td data-raw="virüp fażl u kemāli ẖusrevāne">virüp fażl u kemāli ẖusrevāne</td>
+<td data-raw="virüp fażl u kemāli ẖusrevāne">virüp fażl u kemāli ẖusrevāne</td>
+<td data-raw="virüp fażl u kemāli ẖusrevāne">virüp fażl u kemāli ẖusrevāne</td>
+<td data-raw="---">---</td>
+<td data-raw="virüp fażl u kemāli ẖusrevāne">virüp fażl u kemāli ẖusrevāne</td>
+<td data-raw="virüp fażl u kemāli ẖusrevāne">virüp fażl u kemāli ẖusrevāne</td>
+<td data-raw="virüp fażl u kemāli ẖusrevāne">virüp fażl u kemāli ẖusrevāne</td>
+<td data-raw="virüp fażl u kemāli ẖusrevāne">virüp fażl u kemāli ẖusrevāne</td>
+</tr>
+<tr>
+<td data-raw="saʿādet mülkine tezyīn ü āyīn">saʿādet mülkine tezyīn ü āyīn</td>
+<td data-raw="meʿānī mülkine tertīb ü āyīn">meʿānī mülkine tertīb ü āyīn</td>
+<td data-raw="maʿānī mülkine tezyīn ü āyīn">maʿānī mülkine tezyīn ü āyīn</td>
+<td data-raw="---">---</td>
+<td data-raw="maʿānī mülkine tertīb ü āyīn">maʿānī mülkine tertīb ü āyīn</td>
+<td data-raw="maʿānī mülkine tertīb ü āyīn">maʿānī mülkine tertīb ü āyīn</td>
+<td data-raw="maʿānī mülkine tezyīn ü āyīn">maʿānī mülkine tezyīn ü āyīn</td>
+<td data-raw="maʿānī mülkine tezyīn ü āyīn">maʿānī mülkine tezyīn ü āyīn</td>
+</tr>
+<tr>
+<td data-raw="yine naẓm eylemiş bir ʿıḳd-ı gevher">yine naẓm eylemiş bir ʿıḳd-ı gevher</td>
+<td data-raw="yine naẓm eylemiş bir ʿıḳd-ı gevher">yine naẓm eylemiş bir ʿıḳd-ı gevher</td>
+<td data-raw="yine naẓm eylemiş bir ʿıḳd-ı gevher">yine naẓm eylemiş bir ʿıḳd-ı gevher</td>
+<td data-raw="---">---</td>
+<td data-raw="yine naẓm eylemiş bir ʿıḳd-ı gevher">yine naẓm eylemiş bir ʿıḳd-ı gevher</td>
+<td data-raw="yine naẓm eylemiş bir ʿıḳd-ı gevher">yine naẓm eylemiş bir ʿıḳd-ı gevher</td>
+<td data-raw="yine naẓm eylemiş bir ʿıḳd-ı gevher">yine naẓm eylemiş bir ʿıḳd-ı gevher</td>
+<td data-raw="yine naẓm eylemiş bir ʿıḳd-ı gevher">yine naẓm eylemiş bir ʿıḳd-ı gevher</td>
+</tr>
+<tr>
+<td data-raw="ider biñ kerre ḥassān görse taḥsīn">ider biñ kerre ḥassān görse taḥsīn</td>
+<td data-raw="ider biñ kerre ḥassān görse taḥsīn">ider biñ kerre ḥassān görse taḥsīn</td>
+<td data-raw="ider biñ kerre ḥassān görse taḥsīn">ider biñ kerre ḥassān görse taḥsīn</td>
+<td data-raw="---">---</td>
+<td data-raw="ider biñ kerre ḥassān görse taḥsīn">ider biñ kerre ḥassān görse taḥsīn</td>
+<td data-raw="ider biñ kerre ḥassān görse taḥsīn">ider biñ kerre ḥassān görse taḥsīn</td>
+<td data-raw="ider biñ kerre ḥassān görse taḥsīn">ider biñ kerre ḥassān görse taḥsīn</td>
+<td data-raw="ider biñ kerre ḥassān görse taḥsīn">ider biñ kerre ḥassān görse taḥsīn</td>
+</tr>
+<tr>
+<td data-raw="miŝāl-i ẖurde-i pīrūze ẖaṭṭı">miŝāl-i ẖurde-i pīrūze ẖaṭṭı</td>
+<td data-raw="miŝāl-i ẖurde-i pīrūze ẖaṭṭı">miŝāl-i ẖurde-i pīrūze ẖaṭṭı</td>
+<td data-raw="miŝāl-i ẖurde-i pīrūze ẖaṭṭı">miŝāl-i ẖurde-i pīrūze ẖaṭṭı</td>
+<td data-raw="---">---</td>
+<td data-raw="miŝāl-i ẖurde-i pīrūze ẖaṭṭı">miŝāl-i ẖurde-i pīrūze ẖaṭṭı</td>
+<td data-raw="miŝāl-i ẖurde-i pīrūze ẖaṭṭı">miŝāl-i ẖurde-i pīrūze ẖaṭṭı</td>
+<td data-raw="miŝāl-i ẖurde-i pīrūze ẖaṭṭı">miŝāl-i ẖurde-i pīrūze ẖaṭṭı</td>
+<td data-raw="miŝāl-i ẖurde-i pīrūze ẖaṭṭı">miŝāl-i ẖurde-i pīrūze ẖaṭṭı</td>
+</tr>
+<tr>
+<td data-raw="mücellā ṣafḥası bir levḥ-i sīmīn">mücellā ṣafḥası bir levḥ-i sīmīn</td>
+<td data-raw="mücellā ṣafḥası bir levḥ-i sīmīn">mücellā ṣafḥası bir levḥ-i sīmīn</td>
+<td data-raw="mücellā ṣafḥası bir levḥ-i sīmīn">mücellā ṣafḥası bir levḥ-i sīmīn</td>
+<td data-raw="---">---</td>
+<td data-raw="mücellā ṣafḥası bir levḥ-i sīmīn">mücellā ṣafḥası bir levḥ-i sīmīn</td>
+<td data-raw="mücellā ṣafḥası bir levḥ-i sīmīn">mücellā ṣafḥası bir levḥ-i sīmīn</td>
+<td data-raw="mücellā ṣafḥası bir levḥ-i sīmīn">mücellā ṣafḥası bir levḥ-i sīmīn</td>
+<td data-raw="mücellā ṣafḥası bir levḥ-i sīmīn">mücellā ṣafḥası bir levḥ-i sīmīn</td>
+</tr>
+<tr>
+<td data-raw="ya ẖod zībā ter ü tāze benefşe">ya ẖod zībā ter ü tāze benefşe</td>
+<td data-raw="ya ẖod zībā ter ü tāze benefşe">ya ẖod zībā ter ü tāze benefşe</td>
+<td data-raw="ya ẖod zībā ter ü tāze benefşe">ya ẖod zībā ter ü tāze benefşe</td>
+<td data-raw="---">---</td>
+<td data-raw="ya ẖod zībā ter ü tāze benefşe">ya ẖod zībā ter ü tāze benefşe</td>
+<td data-raw="ya ẖod zībā ter ü tāze benefşe">ya ẖod zībā ter ü tāze benefşe</td>
+<td data-raw="ya ẖod zībā ter ü tāze benefşe">ya ẖod zībā ter ü tāze benefşe</td>
+<td data-raw="ya ẖod zībā ter ü tāze benefşe">ya ẖod zībā ter ü tāze benefşe</td>
+</tr>
+<tr>
+<td data-raw="derāġūş eylemiş gülberg-i nesrīn">derāġūş eylemiş gülberg-i nesrīn</td>
+<td data-raw="derāġūş eylemiş gülberg-i nesrīn">derāġūş eylemiş gülberg-i nesrīn</td>
+<td data-raw="derāġūş eylemiş gülberg-i nesrīn">derāġūş eylemiş gülberg-i nesrīn</td>
+<td data-raw="---">---</td>
+<td data-raw="derāġūş eylemiş gülberg-i nesrīn">derāġūş eylemiş gülberg-i nesrīn</td>
+<td data-raw="derāġūş eylemiş gülberg-i nesrīn">derāġūş eylemiş gülberg-i nesrīn</td>
+<td data-raw="derāġūş eylemiş gülberg-i nesrīn">derāġūş eylemiş gülberg-i nesrīn</td>
+<td data-raw="derāġūş eylemiş gülberg-i nesrīn">derāġūş eylemiş gülberg-i nesrīn</td>
+</tr>
+<tr>
+<td data-raw="beyāżı ġu​rre-i ṣubḥ-ı saʿādet">beyāżı ġu​rre-i ṣubḥ-ı saʿādet</td>
+<td data-raw="beyāżı ġu​rre-i ṣubḥ-ı saʿādet">beyāżı ġu​rre-i ṣubḥ-ı saʿādet</td>
+<td data-raw="beyāżı ġu​rre-i ṣubḥ-ı saʿādet">beyāżı ġu​rre-i ṣubḥ-ı saʿādet</td>
+<td data-raw="---">---</td>
+<td data-raw="beyāżı ġu​rre-i ṣubḥ-ı saʿādet">beyāżı ġu​rre-i ṣubḥ-ı saʿādet</td>
+<td data-raw="beyāżı ġu​rre-i ṣubḥ-ı saʿādet">beyāżı ġu​rre-i ṣubḥ-ı saʿādet</td>
+<td data-raw="beyāżı ġu​rre-i ṣubḥ-ı saʿādet">beyāżı ġu​rre-i ṣubḥ-ı saʿādet</td>
+<td data-raw="beyāżı ġu​rre-i ṣubḥ-ı saʿādet">beyāżı ġu​rre-i ṣubḥ-ı saʿādet</td>
+</tr>
+<tr>
+<td data-raw="sevādı sürme-i çeşm-i cihān bīn">sevādı sürme-i çeşm-i cihān bīn</td>
+<td data-raw="sevādı sürme-i çeşm-i cihān bīn">sevādı sürme-i çeşm-i cihān bīn</td>
+<td data-raw="sevādı sürme-i çeşm-i cihān bīn">sevādı sürme-i çeşm-i cihān bīn</td>
+<td data-raw="---">---</td>
+<td data-raw="sevādı sürme-i çeşm-i cihān bīn">sevādı sürme-i çeşm-i cihān bīn</td>
+<td data-raw="sevādı sürme-i çeşm-i cihān bīn">sevādı sürme-i çeşm-i cihān bīn</td>
+<td data-raw="sevādı sürme-i çeşm-i cihān bīn">sevādı sürme-i çeşm-i cihān bīn</td>
+<td data-raw="sevādı sürme-i çeşm-i cihān bīn">sevādı sürme-i çeşm-i cihān bīn</td>
+</tr>
+<tr>
+<td data-raw="sevād-ı ẖaṭṭ içinde noḳṭalardan">sevād-ı ẖaṭṭ içinde noḳṭalardan</td>
+<td data-raw="sevād-ı ẖaṭṭ içinde noḳṭalardan">sevād-ı ẖaṭṭ içinde noḳṭalardan</td>
+<td data-raw="sevād-ı ẖaṭṭ içinde noḳṭalar hem">sevād-ı ẖaṭṭ içinde noḳṭalar hem</td>
+<td data-raw="---">---</td>
+<td data-raw="sevād-ı ẖaṭṭ içinde noḳṭalardan">sevād-ı ẖaṭṭ içinde noḳṭalardan</td>
+<td data-raw="sevād-ı ẖaṭṭ içinde noḳṭalardan">sevād-ı ẖaṭṭ içinde noḳṭalardan</td>
+<td data-raw="sevād-ı ẖaṭṭ içinde noḳṭalardan">sevād-ı ẖaṭṭ içinde noḳṭalardan</td>
+<td data-raw="sevād-ı ẖaṭṭ içinde noḳṭalardan">sevād-ı ẖaṭṭ içinde noḳṭalardan</td>
+</tr>
+<tr>
+<td data-raw="şeb-i tārīk içinde şekl-i pervīn">şeb-i tārīk içinde şekl-i pervīn</td>
+<td data-raw="şeb-i tārīk içinde şekl-i pervīn">şeb-i tārīk içinde şekl-i pervīn</td>
+<td data-raw="şeb-i tārīk içinde şekl-i pervīn">şeb-i tārīk içinde şekl-i pervīn</td>
+<td data-raw="---">---</td>
+<td data-raw="şeb-i tārīk içinde şekl-i pervīn">şeb-i tārīk içinde şekl-i pervīn</td>
+<td data-raw="şeb-i tārīk içinde şekl-i pervīn">şeb-i tārīk içinde şekl-i pervīn</td>
+<td data-raw="şeb-i tārīk içinde şekl-i pervīn">şeb-i tārīk içinde şekl-i pervīn</td>
+<td data-raw="şeb-i tārīk içinde şekl-i pervīn">şeb-i tārīk içinde şekl-i pervīn</td>
+</tr>
+<tr>
+<td data-raw="egerçi noḳṭadur ṣūretde anlar">egerçi noḳṭadur ṣūretde anlar</td>
+<td data-raw="egerçi noḳṭadur ṣūretde anlar">egerçi noḳṭadur ṣūretde anlar</td>
+<td data-raw="egerçi noḳṭadur ṣūretde anlar">egerçi noḳṭadur ṣūretde anlar</td>
+<td data-raw="egerçi noḳṭadur ṣūretde anlar">egerçi noḳṭadur ṣūretde anlar</td>
+<td data-raw="egerçi noḳṭadur ṣūretde anlar">egerçi noḳṭadur ṣūretde anlar</td>
+<td data-raw="---">---</td>
+<td data-raw="egerçi noḳṭadur ṣūretde anlar">egerçi noḳṭadur ṣūretde anlar</td>
+<td data-raw="egerçi noḳṭadur ṣūretde anlar">egerçi noḳṭadur ṣūretde anlar</td>
+</tr>
+<tr>
+<td data-raw="velī maʿnā yüzinde ẖāl-i müşgīn">velī maʿnā yüzinde ẖāl-i müşgīn</td>
+<td data-raw="velī maʿnā yüzinde ẖāl-i müşgīn">velī maʿnā yüzinde ẖāl-i müşgīn</td>
+<td data-raw="velī maʿnā yüzinde ẖāl-i müşgīn">velī maʿnā yüzinde ẖāl-i müşgīn</td>
+<td data-raw="velī maʿnā yüzinde ẖāl-i müşgīn">velī maʿnā yüzinde ẖāl-i müşgīn</td>
+<td data-raw="velī maʿnā yüzinde ẖāl-i müşgīn">velī maʿnā yüzinde ẖāl-i müşgīn</td>
+<td data-raw="---">---</td>
+<td data-raw="velī maʿnā yüzinde ẖāl-i müşgīn">velī maʿnā yüzinde ẖāl-i müşgīn</td>
+<td data-raw="velī maʿnā yüzinde ẖāl-i müşgīn">velī maʿnā yüzinde ẖāl-i müşgīn</td>
+</tr>
+<tr>
+<td data-raw="edāsı selsebīl-i bāġ-ı rıḍvān">edāsı selsebīl-i bāġ-ı rıḍvān</td>
+<td data-raw="edāsı selsebīl-i bāġ-ı rıḍvān">edāsı selsebīl-i bāġ-ı rıḍvān</td>
+<td data-raw="edāsı selsebīl-i bāġ-ı rıḍvān">edāsı selsebīl-i bāġ-ı rıḍvān</td>
+<td data-raw="edāsı selsebīl-i bāġ-ı rıḍvān">edāsı selsebīl-i bāġ-ı rıḍvān</td>
+<td data-raw="edāsı selsebīl-i bāġ-ı rıḍvān">edāsı selsebīl-i bāġ-ı rıḍvān</td>
+<td data-raw="edāsı selsebīl-i bāġ-ı rıḍvān">edāsı selsebīl-i bāġ-ı rıḍvān</td>
+<td data-raw="edāsı selsebīl-i bāġ-ı rıḍvān">edāsı selsebīl-i bāġ-ı rıḍvān</td>
+<td data-raw="edāsı selsebīl-i bāġ-ı rıḍvān">edāsı selsebīl-i bāġ-ı rıḍvān</td>
+</tr>
+<tr>
+<td data-raw="ḥurūfı ravżadan gelmiş reyāḥīn">ḥurūfı ravżadan gelmiş reyāḥīn</td>
+<td data-raw="ḥurūfı ravżadan gelmiş reyāḥīn">ḥurūfı ravżadan gelmiş reyāḥīn</td>
+<td data-raw="ḥurūfı ravżada bitmiş reyāḥīn">ḥurūfı ravżada bitmiş reyāḥīn</td>
+<td data-raw="ḥurūfı ravżadan gelmiş reyāḥīn">ḥurūfı ravżadan gelmiş reyāḥīn</td>
+<td data-raw="ḥurūfı ravżadan gelmiş reyāḥīn">ḥurūfı ravżadan gelmiş reyāḥīn</td>
+<td data-raw="ḥurūfı ravżadan gelmiş reyāḥīn">ḥurūfı ravżadan gelmiş reyāḥīn</td>
+<td data-raw="ḥurūfı ravżadan gelmiş reyāḥīn">ḥurūfı ravżadan gelmiş reyāḥīn</td>
+<td data-raw="ḥurūfı ravżadan gelmiş reyāḥīn">ḥurūfı ravżadan gelmiş reyāḥīn</td>
+</tr>
+<tr>
+<td data-raw="ne deryādur bu şiʿrüñ baḥri yā rab">ne deryādur bu şiʿrüñ baḥri yā rab</td>
+<td data-raw="ne deryādur bu şiʿrüñ baḥri yā rab">ne deryādur bu şiʿrüñ baḥri yā rab</td>
+<td data-raw="ne deryādur bu şiʿrüñ baḥri yā rab">ne deryādur bu şiʿrüñ baḥri yā rab</td>
+<td data-raw="ne deryādur bu şiʿrüñ baḥri yā rab">ne deryādur bu şiʿrüñ baḥri yā rab</td>
+<td data-raw="ne deryādur bu şiʿrüñ baḥri yā rab">ne deryādur bu şiʿrüñ baḥri yā rab</td>
+<td data-raw="ne deryādur bu şiʿrüñ baḥri yā rab">ne deryādur bu şiʿrüñ baḥri yā rab</td>
+<td data-raw="ne deryādur bu şiʿrüñ baḥri yā rab">ne deryādur bu şiʿrüñ baḥri yā rab</td>
+<td data-raw="ne deryādur bu baḥrüñ baḥri yā rab">ne deryādur bu baḥrüñ baḥri yā rab</td>
+</tr>
+<tr>
+<td data-raw="ki andan kāyināt olmış güher çīn">ki andan kāyināt olmış güher çīn</td>
+<td data-raw="ki andan kāyināt olmış güher çīn">ki andan kāyināt olmış güher çīn</td>
+<td data-raw="ki andan kāyināt olmış güher çīn">ki andan kāyināt olmış güher çīn</td>
+<td data-raw="ki andan kāyināt olmış güher çīn">ki andan kāyināt olmış güher çīn</td>
+<td data-raw="---">---</td>
+<td data-raw="ki andan kāyināt olmış güher çīn">ki andan kāyināt olmış güher çīn</td>
+<td data-raw="ki andan kāyināt olmış güher çīn">ki andan kāyināt olmış güher çīn</td>
+<td data-raw="ki andan kāyināt olmış güher çīn">ki andan kāyināt olmış güher çīn</td>
+</tr>
+<tr>
+<td data-raw="nice nāzükdür ol şiʿr-i şeker bār">nice nāzükdür ol şiʿr-i şeker bār</td>
+<td data-raw="nice nāzükdür ol şiʿr-i şeker bār">nice nāzükdür ol şiʿr-i şeker bār</td>
+<td data-raw="nice nāzükdür ol şiʿr-i şeker bār">nice nāzükdür ol şiʿr-i şeker bār</td>
+<td data-raw="niçe nāzükdür ol şiʿr-i şeker bār">niçe nāzükdür ol şiʿr-i şeker bār</td>
+<td data-raw="---">---</td>
+<td data-raw="nice nāzükdür ol şiʿr-i şeker bār">nice nāzükdür ol şiʿr-i şeker bār</td>
+<td data-raw="nice nāzükdür ol şiʿr-i şeker bār">nice nāzükdür ol şiʿr-i şeker bār</td>
+<td data-raw="nice nāzükdür ol şiʿr-i şeker bār">nice nāzükdür ol şiʿr-i şeker bār</td>
+</tr>
+<tr>
+<td data-raw="leb-i dilber gibi şīrīn ü rengīn">leb-i dilber gibi şīrīn ü rengīn</td>
+<td data-raw="leb-i dilber gibi şīrīn ü rengīn">leb-i dilber gibi şīrīn ü rengīn</td>
+<td data-raw="leb-i dilber gibi şīrīn ü rengīn">leb-i dilber gibi şīrīn ü rengīn</td>
+<td data-raw="leb-i dilber gibi şīrīn ü rengīn">leb-i dilber gibi şīrīn ü rengīn</td>
+<td data-raw="leb-i dilber gibi şīrīn ü rengīn">leb-i dilber gibi şīrīn ü rengīn</td>
+<td data-raw="leb-i dilber gibi şīrīn ü rengīn">leb-i dilber gibi şīrīn ü rengīn</td>
+<td data-raw="leb-i dilber gibi şīrīn ü rengīn">leb-i dilber gibi şīrīn ü rengīn</td>
+<td data-raw="leb-i dilber gibi şīrīn ü rengīn">leb-i dilber gibi şīrīn ü rengīn</td>
+</tr>
+<tr>
+<td data-raw="pes-i āyīne-i ṭabʿından itdi">pes-i āyīne-i ṭabʿından itdi</td>
+<td data-raw="pes-i āyīne-i ṭabʿından itdi">pes-i āyīne-i ṭabʿından itdi</td>
+<td data-raw="pes-i āyīne-i ṭabʿından özüñe (?)">pes-i āyīne-i ṭabʿından özüñe (?)</td>
+<td data-raw="pes-i āyīne-i ṭabʿından itdi">pes-i āyīne-i ṭabʿından itdi</td>
+<td data-raw="pes-i āyīne-i ṭabʿından itdi">pes-i āyīne-i ṭabʿından itdi</td>
+<td data-raw="pes-i āyīne-i ṭabʿından itdi">pes-i āyīne-i ṭabʿından itdi</td>
+<td data-raw="pes-i āyīne-i ṭabʿından itdi">pes-i āyīne-i ṭabʿından itdi</td>
+<td data-raw="pes-i āyīne-i ṭabʿından itdi">pes-i āyīne-i ṭabʿından itdi</td>
+</tr>
+<tr>
+<td data-raw="yine ṭuṭī ṣıfat bāḳī ye telḳīn">yine ṭuṭī ṣıfat bāḳī ye telḳīn</td>
+<td data-raw="yine ṭuṭī ṣıfat bāḳī ye telḳīn">yine ṭuṭī ṣıfat bāḳī ye telḳīn</td>
+<td data-raw="yine ṭuṭī ṣıfat bāḳī ye telḳīn">yine ṭuṭī ṣıfat bāḳī ye telḳīn</td>
+<td data-raw="yine ṭuṭī ṣıfat bāḳiye telḳīn">yine ṭuṭī ṣıfat bāḳiye telḳīn</td>
+<td data-raw="yine ṭuṭī ṣıfat bāḳī ye telḳīn">yine ṭuṭī ṣıfat bāḳī ye telḳīn</td>
+<td data-raw="yine ṭuṭī ṣıfat bāḳī ye telḳīn">yine ṭuṭī ṣıfat bāḳī ye telḳīn</td>
+<td data-raw="yine ṭuṭī ṣıfat bāḳī ye telḳīn">yine ṭuṭī ṣıfat bāḳī ye telḳīn</td>
+<td data-raw="yine ṭuṭī ṣıfat bāḳī ye telḳīn">yine ṭuṭī ṣıfat bāḳī ye telḳīn</td>
+</tr>
+<tr>
+<td data-raw="şikār itmek nedür maʿnā hümāsın">şikār itmek nedür maʿnā hümāsın</td>
+<td data-raw="şikār itmek nedür maʿnā hümāsın">şikār itmek nedür maʿnā hümāsın</td>
+<td data-raw="şikār itmek nedür maʿnā hümāsın">şikār itmek nedür maʿnā hümāsın</td>
+<td data-raw="şikār itmek nedür maʿnā hümāsın">şikār itmek nedür maʿnā hümāsın</td>
+<td data-raw="şikār itmek nedür maʿnā hevāsın">şikār itmek nedür maʿnā hevāsın</td>
+<td data-raw="şikār itmek nedür maʿnā hümāsın">şikār itmek nedür maʿnā hümāsın</td>
+<td data-raw="şikār itmek nedür maʿnā hümāsın">şikār itmek nedür maʿnā hümāsın</td>
+<td data-raw="şikār itmek nedür maʿnā hümāsın">şikār itmek nedür maʿnā hümāsın</td>
+</tr>
+<tr>
+<td data-raw="bulınsa ṭabʿ-ı şāhī gibi şāhīn">bulınsa ṭabʿ-ı şāhī gibi şāhīn</td>
+<td data-raw="bulınsa ṭabʿ-ı şāhī gibi şāhīn">bulınsa ṭabʿ-ı şāhī gibi şāhīn</td>
+<td data-raw="bulınsa ṭabʿ-ı şāhī gibi şāhīn">bulınsa ṭabʿ-ı şāhī gibi şāhīn</td>
+<td data-raw="bulınsa ṭabʿ-ı şāhī gibi şāhīn">bulınsa ṭabʿ-ı şāhī gibi şāhīn</td>
+<td data-raw="bulınsa ṭabʿ-ı şāhī gibi şāhīn">bulınsa ṭabʿ-ı şāhī gibi şāhīn</td>
+<td data-raw="bulınsa ṭabʿ-ı şāhī gibi şāhīn">bulınsa ṭabʿ-ı şāhī gibi şāhīn</td>
+<td data-raw="bulınsa ṭabʿ-ı şāhī gibi şāhīn">bulınsa ṭabʿ-ı şāhī gibi şāhīn</td>
+<td data-raw="bulınsa ṭabʿ-ı şāhī gibi şāhīn">bulınsa ṭabʿ-ı şāhī gibi şāhīn</td>
+</tr>
+<tr>
+<td data-raw="kemālin añlayup bir bir öñinde">kemālin añlayup bir bir öñinde</td>
+<td data-raw="kemālin añlayup bir bir öñinde">kemālin añlayup bir bir öñinde</td>
+<td data-raw="kemālin añlayup bir bir öñinde">kemālin añlayup bir bir öñinde</td>
+<td data-raw="kemālin añlayup bir bir öñinde">kemālin añlayup bir bir öñinde</td>
+<td data-raw="kemālin añlayup bir bir öñinde">kemālin añlayup bir bir öñinde</td>
+<td data-raw="kemālin añlayup bir bir öñinde">kemālin añlayup bir bir öñinde</td>
+<td data-raw="kemālin añlayup bir bir öñinde">kemālin añlayup bir bir öñinde</td>
+<td data-raw="kemālin añlayup bir bir öñinde">kemālin añlayup bir bir öñinde</td>
+</tr>
+<tr>
+<td data-raw="ḳomışlar yüz yire şāhān-ı pīşīn">ḳomışlar yüz yire şāhān-ı pīşīn</td>
+<td data-raw="ḳomışlar yüz yire şāhān-ı pīşīn">ḳomışlar yüz yire şāhān-ı pīşīn</td>
+<td data-raw="ḳomışlar baş yire şāhān-ı pīşīn">ḳomışlar baş yire şāhān-ı pīşīn</td>
+<td data-raw="ḳomışlar yüz yire şāhān-ı pīşīn">ḳomışlar yüz yire şāhān-ı pīşīn</td>
+<td data-raw="ḳomışlar yüz yire şāhān-ı pīşīn">ḳomışlar yüz yire şāhān-ı pīşīn</td>
+<td data-raw="ḳomışlar yüz yire şāhān-ı pīşīn">ḳomışlar yüz yire şāhān-ı pīşīn</td>
+<td data-raw="ḳomışlar yüz yire şāhān-ı pīşīn">ḳomışlar yüz yire şāhān-ı pīşīn</td>
+<td data-raw="ḳomışlar yüz yire şāhān-ı pīşīn">ḳomışlar yüz yire şāhān-ı pīşīn</td>
+</tr>
+<tr>
+<td data-raw="cihānda geydügince şāh-ı encüm">cihānda geydügince şāh-ı encüm</td>
+<td data-raw="cihānda geydügince şāh-ı encüm">cihānda geydügince şāh-ı encüm</td>
+<td data-raw="cihānda geydügince şāh-ı encüm">cihānda geydügince şāh-ı encüm</td>
+<td data-raw="cihānda geydügince şāh-ı encüm">cihānda geydügince şāh-ı encüm</td>
+<td data-raw="cihānda geydügince şāh-ı encüm">cihānda geydügince şāh-ı encüm</td>
+<td data-raw="cihānda geydügince şāh-ı encüm">cihānda geydügince şāh-ı encüm</td>
+<td data-raw="cihānda geydügince şāh-ı encüm">cihānda geydügince şāh-ı encüm</td>
+<td data-raw="cihānda geydügince şāh-ı encüm">cihānda geydügince şāh-ı encüm</td>
+</tr>
+<tr>
+<td data-raw="zümürrüd taẖtı üzre tāc-ı zerrīn">zümürrüd taẖtı üzre tāc-ı zerrīn</td>
+<td data-raw="zümürrüd taẖtı üzre tāc-ı zerrīn">zümürrüd taẖtı üzre tāc-ı zerrīn</td>
+<td data-raw="zümürrüd taẖtı üzre tāc-ı zerrīn">zümürrüd taẖtı üzre tāc-ı zerrīn</td>
+<td data-raw="zümürrüd taẖtı üzre tāc-ı zerrīn">zümürrüd taẖtı üzre tāc-ı zerrīn</td>
+<td data-raw="zümürrüd taẖtı üzre tāc-ı zerrīn">zümürrüd taẖtı üzre tāc-ı zerrīn</td>
+<td data-raw="zümürrüd taẖtı üzre tāc-ı zerrīn">zümürrüd taẖtı üzre tāc-ı zerrīn</td>
+<td data-raw="zümürrüd taẖtı üzre tāc-ı zerrīn">zümürrüd taẖtı üzre tāc-ı zerrīn</td>
+<td data-raw="zümürrüd taẖtı üzre tāc-ı zerrīn">zümürrüd taẖtı üzre tāc-ı zerrīn</td>
+</tr>
+<tr>
+<td data-raw="ẖudā virsün serīr-i salṭanatda">ẖudā virsün serīr-i salṭanatda</td>
+<td data-raw="ẖudā virsün serīr-i salṭanatda">ẖudā virsün serīr-i salṭanatda</td>
+<td data-raw="ẖudā virsün serīr-i salṭanatda">ẖudā virsün serīr-i salṭanatda</td>
+<td data-raw="ẖudā virsün serīr-i salṭanatda">ẖudā virsün serīr-i salṭanatda</td>
+<td data-raw="ẖudā virsün serīr-i salṭanatda">ẖudā virsün serīr-i salṭanatda</td>
+<td data-raw="ẖudā virsün serīr-i salṭanatda">ẖudā virsün serīr-i salṭanatda</td>
+<td data-raw="ẖudā virsün serīr-i salṭanatda">ẖudā virsün serīr-i salṭanatda</td>
+<td data-raw="ẖudā virsün serīr-i salṭanatda">ẖudā virsün serīr-i salṭanatda</td>
+</tr>
+<tr>
+<td data-raw="saʿādet tācı birle ʿizz ü temkīn">saʿādet tācı birle ʿizz ü temkīn</td>
+<td data-raw="saʿādet tācı birle ʿizz ü temkīn">saʿādet tācı birle ʿizz ü temkīn</td>
+<td data-raw="saʿādet tācı birle ʿizz ü temkīn">saʿādet tācı birle ʿizz ü temkīn</td>
+<td data-raw="saʿādet tācı birle ʿizz ü temkīn">saʿādet tācı birle ʿizz ü temkīn</td>
+<td data-raw="saʿādet tācı birle ʿizz ü temkīn">saʿādet tācı birle ʿizz ü temkīn</td>
+<td data-raw="saʿādet tācı birle ʿizz ü temkīn">saʿādet tācı birle ʿizz ü temkīn</td>
+<td data-raw="saʿādet tācı birle ʿizz ü temkīn">saʿādet tācı birle ʿizz ü temkīn</td>
+<td data-raw="saʿādet tācı birle ʿizz ü temkīn">saʿādet tācı birle ʿizz ü temkīn</td>
+</tr>
+<tr>
+<td data-raw="ẖaṭālardan emīn olsun cihānda">ẖaṭālardan emīn olsun cihānda</td>
+<td data-raw="belālardan emīn olsun cihānda">belālardan emīn olsun cihānda</td>
+<td data-raw="ẖaṭālardan emīn olsun cihānda">ẖaṭālardan emīn olsun cihānda</td>
+<td data-raw="ẖaṭālardan emīn olsun cihānda">ẖaṭālardan emīn olsun cihānda</td>
+<td data-raw="ẖaṭālardan emīn olsun cihānda">ẖaṭālardan emīn olsun cihānda</td>
+<td data-raw="ẖaṭālardan emīn olsun cihānda">ẖaṭālardan emīn olsun cihānda</td>
+<td data-raw="belālardan emīn olsun cihānda">belālardan emīn olsun cihānda</td>
+<td data-raw="belālardan emīn olsun cihānda">belālardan emīn olsun cihānda</td>
+</tr>
+<tr>
+<td data-raw="ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn">ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn</td>
+<td data-raw="ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn">ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn</td>
+<td data-raw="ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn">ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn</td>
+<td data-raw="ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn">ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn</td>
+<td data-raw="ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn">ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn</td>
+<td data-raw="ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn">ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn</td>
+<td data-raw="ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn">ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn</td>
+<td data-raw="ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn">ilā​hī ʿizzetüñ ḥaḳḳiçün āmīn</td>
+</tr>
+</tbody></table></body></html>

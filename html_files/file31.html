@@ -1,0 +1,274 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'><title>Collation</title>
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+  }
+
+  details {
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    padding: 6px;
+    border-radius: 4px;
+  }
+
+  summary {
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+
+  th,
+  td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    white-space: nowrap;
+  }
+
+  th {
+    background: #f9f9f9;
+  }
+
+  /* whole-cell highlight for differing cells */
+  .diff {
+    background: #fffb8f;
+  }
+
+  /* highlight individual differing words */
+  .diff-word {
+    background: #fffb8f;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+</style>
+
+<script>
+  let diffMode = false;
+
+  // Compute word‐level diffs via LCS and wrap non-matching words
+  function wordDiff(refText, text) {
+    const refWords = refText.split(/\s+/);
+    const words    = text.split(/\s+/);
+    const m = refWords.length, n = words.length;
+    // build LCS table
+    const dp = Array(m+1).fill().map(() => Array(n+1).fill(0));
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (refWords[i-1] === words[j-1]) {
+          dp[i][j] = dp[i-1][j-1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+        }
+      }
+    }
+    // backtrack to find matching positions in `words`
+    let i = m, j = n, matches = [];
+    while (i > 0 && j > 0) {
+      if (refWords[i-1] === words[j-1]) {
+        matches.push(j-1);
+        i--; j--;
+      } else if (dp[i-1][j] >= dp[i][j-1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+    const matchSet = new Set(matches);
+    // rebuild with spans for non-matches
+    return words.map((w, idx) =>
+      matchSet.has(idx)
+        ? w
+        : `<span class="diff-word">${w}</span>`
+    ).join(" ");
+  }
+
+  function applyFilters() {
+    const sel   = Array.from(document.querySelectorAll('.ms-filter input:checked')).map(c => c.value);
+    const minM  = +document.getElementById('mil-min').value, maxM = +document.getElementById('mil-max').value;
+    const minH  = +document.getElementById('hic-min').value, maxH = +document.getElementById('hic-max').value;
+    const must  = Array.from(document.querySelectorAll('.must-filter input:checked')).map(c => c.value);
+    const derk  = Array.from(document.querySelectorAll('.derk-filter input:checked')).map(c => c.value);
+    const typs  = Array.from(document.querySelectorAll('.typ-filter input:checked')).map(c => c.value);
+    const muels = Array.from(document.querySelectorAll('.muel-filter input:checked')).map(c => c.value);
+    const frms  = Array.from(document.querySelectorAll('.frm-filter input:checked')).map(c => c.value);
+
+    document.querySelectorAll('th').forEach((th, i) => {
+      const M = +th.dataset.miladi || 0, H = +th.dataset.hicri || 0;
+      const ok = sel.includes(th.dataset.header)
+              && M >= minM && M <= maxM
+              && H >= minH && H <= maxH
+              && must.includes(th.dataset.mustensih)
+              && derk.includes(th.dataset.derkenar)
+              && typs.includes(th.dataset.tur)
+              && muels.includes(th.dataset.muellif)
+              && frms.includes(th.dataset.form);
+      document.querySelectorAll('tr').forEach(r => {
+        if (r.children[i]) r.children[i].style.display = ok ? '' : 'none';
+      });
+    });
+
+    if (diffMode) applyDiffs();
+  }
+
+  function applyDiffs() {
+    document.querySelectorAll('tbody tr').forEach(tr => {
+      const visible = Array.from(tr.children).filter(td => td.style.display !== 'none');
+      if (visible.length < 2) return;
+
+      // reset to raw text
+      visible.forEach(td => td.innerHTML = td.dataset.raw);
+
+      // count occurrences to find majority text
+      const counts = {};
+      visible.forEach(td => {
+        counts[td.dataset.raw] = (counts[td.dataset.raw] || 0) + 1;
+      });
+      let majority = visible[0].dataset.raw, maxc = 0;
+      for (let txt in counts) {
+        if (counts[txt] > maxc) {
+          maxc = counts[txt];
+          majority = txt;
+        }
+      }
+
+      // highlight differing words
+      visible.forEach(td => {
+        if (td.dataset.raw !== majority) {
+          td.innerHTML = wordDiff(majority, td.dataset.raw);
+        }
+      });
+    });
+  }
+
+  function toggleDiff() {
+    diffMode = !diffMode;
+    document.getElementById('diff-btn').innerText =
+      diffMode ? 'Hide Differences' : 'Show Differences';
+    if (diffMode) {
+      applyDiffs();
+    } else {
+      // restore plain text for all visible cells
+      document.querySelectorAll('tbody tr').forEach(tr => {
+        Array.from(tr.children)
+          .filter(td => td.style.display !== 'none')
+          .forEach(td => td.innerHTML = td.dataset.raw);
+      });
+    }
+  }
+</script>
+
+</head><body>
+<h1>Collation Table</h1>
+<div><button id='diff-btn' onclick='toggleDiff()'>Show Differences</button></div>
+<div class='filters'>
+<details open><summary>Şiir Adı</summary><div class='ms-filter'>
+<label><input type='checkbox' value='18_bnf_tc_356_kaside_15a-15b_dil-i ṣad çāki ser-i zülf-i perīşāne çeker' checked onchange='applyFilters()'> dil-i ṣad çāki ser-i zülf-i perīşāne çeker</label> 
+</div></details>
+
+<details><summary>Yıl Aralığı</summary>
+  <div>
+    Miladi: From <input id='mil-min' type='number' value='1594' min='1594' max='1594' onchange='applyFilters()'>
+           To <input id='mil-max' type='number' value='1594' min='1594' max='1594' onchange='applyFilters()'><br>
+    Hicri: From <input id='hic-min' type='number' value='1002' min='1002' max='1002' onchange='applyFilters()'>
+           To <input id='hic-max' type='number' value='1002' min='1002' max='1002' onchange='applyFilters()'>
+  </div>
+</details>
+
+<details><summary>Müstensih</summary><div class='must-filter'><label><input type='checkbox' value='Bilinmiyor' checked onchange='applyFilters()'> Bilinmiyor</label> <label><input type='checkbox' value='Var' checked onchange='applyFilters()'> Var</label> </div></details>
+<details><summary>Derkenar</summary><div class='derk-filter'><label><input type='checkbox' value='Var' checked onchange='applyFilters()'> Var</label> <label><input type='checkbox' value='Yok' checked onchange='applyFilters()'> Yok</label> </div></details>
+<details><summary>Tür</summary><div class='typ-filter'><label><input type='checkbox' value='kaside' checked onchange='applyFilters()'> kaside</label> </div></details>
+<details><summary>Müellif</summary><div class='muel-filter'><label><input type='checkbox' value='Bâkî' checked onchange='applyFilters()'> Bâkî</label> </div></details>
+<details><summary>Form</summary><div class='frm-filter'><label><input type='checkbox' value='Yazma' checked onchange='applyFilters()'> Yazma</label> </div></details>
+</div><hr><table><thead><tr>
+<th data-header='18_bnf_tc_356_kaside_15a-15b_dil-i ṣad çāki ser-i zülf-i perīşāne çeker' data-miladi='1594' data-hicri='1002' data-mustensih='Bilinmiyor' data-derkenar='Yok' data-tur='kaside' data-muellif='Bâkî' data-form='Yazma'>dil-i ṣad çāki ser-i zülf-i perīşāne çeker<br>Sıra:18 Tür:kaside<br>Miladi:1594 Hicri:1002<br>Kütüphane:bnf Koleksiyon:tc<br>Küt.ID:bnf_1594_1<br>Müellif:Bâkî Müstensih:Bilinmiyor<br>Varak:15a-15b Form:Yazma<br>Derkenar:Yok<br>Başlık:Yok<br>Notlar:</th>
+</tr></thead><tbody>
+<tr>
+<td data-raw="dil-i ṣad çāki ser-i zülf-i perīşāne çeker">dil-i ṣad çāki ser-i zülf-i perīşāne çeker</td>
+</tr>
+<tr>
+<td data-raw="bilür ol mūy ġamın her ne ise şāne çeker">bilür ol mūy ġamın her ne ise şāne çeker</td>
+</tr>
+<tr>
+<td data-raw="kim çıḳar başa ser-i zülf-i girih gīrüñle">kim çıḳar başa ser-i zülf-i girih gīrüñle</td>
+</tr>
+<tr>
+<td data-raw="yine ol silsile cevrin dil-i dīvāne çeker">yine ol silsile cevrin dil-i dīvāne çeker</td>
+</tr>
+<tr>
+<td data-raw="ḳaşlaruñ bükdi bilin gerçi kemān-ı ʿaşḳı">ḳaşlaruñ bükdi bilin gerçi kemān-ı ʿaşḳı</td>
+</tr>
+<tr>
+<td data-raw="ʿāşıḳuñ rüstem-i destānile ẖasmāne çeker">ʿāşıḳuñ rüstem-i destānile ẖasmāne çeker</td>
+</tr>
+<tr>
+<td data-raw="yāre ser ḳılsa fidā mūr ṣıfat cān-ı żaʿīf">yāre ser ḳılsa fidā mūr ṣıfat cān-ı żaʿīf</td>
+</tr>
+<tr>
+<td data-raw="pīş keş pāy-ı melaẖdur ki süleymāna çeker">pīş keş pāy-ı melaẖdur ki süleymāna çeker</td>
+</tr>
+<tr>
+<td data-raw="ne çeker adını eṣḥāb-ı riyā ikide bir">ne çeker adını eṣḥāb-ı riyā ikide bir</td>
+</tr>
+<tr>
+<td data-raw="ṭutalum rind-i gedā bir iki peymāne çeker">ṭutalum rind-i gedā bir iki peymāne çeker</td>
+</tr>
+<tr>
+<td data-raw="sīneme nīzelerin ol müjeler ṭoġrıldur">sīneme nīzelerin ol müjeler ṭoġrıldur</td>
+</tr>
+<tr>
+<td data-raw="üstüme ẖançerin ol ġamze-i mestāne çeker">üstüme ẖançerin ol ġamze-i mestāne çeker</td>
+</tr>
+<tr>
+<td data-raw="mūr-ı endīşe ki peygūle-i ġamdur vaṭanı">mūr-ı endīşe ki peygūle-i ġamdur vaṭanı</td>
+</tr>
+<tr>
+<td data-raw="ṭurmayup ẖāli ẖayālin getürür dāne çeker">ṭurmayup ẖāli ẖayālin getürür dāne çeker</td>
+</tr>
+<tr>
+<td data-raw="ayaġı ṭopraġı tāc-ı ser-i eşrāf-ı cihān">ayaġı ṭopraġı tāc-ı ser-i eşrāf-ı cihān</td>
+</tr>
+<tr>
+<td data-raw="sürme-i ẖāk-i rehin dīde-i aʿyāne çeker">sürme-i ẖāk-i rehin dīde-i aʿyāne çeker</td>
+</tr>
+<tr>
+<td data-raw="ẖūblar ṭutsa rikābın yeridür cümle ḳaçan">ẖūblar ṭutsa rikābın yeridür cümle ḳaçan</td>
+</tr>
+<tr>
+<td data-raw="esb-i nāz-ı felek ol ẖusrev-i ẖūbāne çeker">esb-i nāz-ı felek ol ẖusrev-i ẖūbāne çeker</td>
+</tr>
+<tr>
+<td data-raw="āb ruyın gören ol ẖançer-i āteş tābı">āb ruyın gören ol ẖançer-i āteş tābı</td>
+</tr>
+<tr>
+<td data-raw="sāde rū ẖūb ṣanur sīne-i ʿuryāne çeker">sāde rū ẖūb ṣanur sīne-i ʿuryāne çeker</td>
+</tr>
+<tr>
+<td data-raw="dāmen-i şāhid-i maʿnāya biri dest uramaz">dāmen-i şāhid-i maʿnāya biri dest uramaz</td>
+</tr>
+<tr>
+<td data-raw="çoġ olur gerçi ser-i fikri girībāne çeker">çoġ olur gerçi ser-i fikri girībāne çeker</td>
+</tr>
+<tr>
+<td data-raw="ehl-i dil gūşe-i bī tūşe-i miḥnetde yatur">ehl-i dil gūşe-i bī tūşe-i miḥnetde yatur</td>
+</tr>
+<tr>
+<td data-raw="ḫʷān-ı iḥsānı felek merdüm-i nā dāne çeker">ḫʷān-ı iḥsānı felek merdüm-i nā dāne çeker</td>
+</tr>
+<tr>
+<td data-raw="ṭāliʿuñla niçe bir ceng ü cidāl ey bāḳī">ṭāliʿuñla niçe bir ceng ü cidāl ey bāḳī</td>
+</tr>
+<tr>
+<td data-raw="ʿāḳıbet kevkeb-i baẖtuñ seni dīvāne çeker">ʿāḳıbet kevkeb-i baẖtuñ seni dīvāne çeker</td>
+</tr>
+<tr>
+<td data-raw="devlet-i şāh-ı cevānbaẖta duʿā ḳıl ki seni">devlet-i şāh-ı cevānbaẖta duʿā ḳıl ki seni</td>
+</tr>
+<tr>
+<td data-raw="kimse çekmez ilerü himmet-i şāhāne çeker">kimse çekmez ilerü himmet-i şāhāne çeker</td>
+</tr>
+</tbody></table></body></html>
