@@ -2,22 +2,63 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8">
-  <title>Baki Manuscript</title>
+  <title>Bâkî Manuscript Viewer</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    #viewer { width: 100%; height: 90vh; border: 1px solid #ccc; margin-top: 1em; }
+    body {
+      font-family: 'Helvetica Neue', sans-serif;
+      padding: 40px;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 0.5em;
+    }
+    p.description {
+      font-size: 1em;
+      margin-bottom: 1em;
+      color: #555;
+    }
+    #instructions {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      list-style: disc inside;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 20px 0 10px;
+      font-weight: bold;
+    }
+    #fileSelect {
+      width: 100%;
+      padding: 10px;
+      font-size: 1em;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    #viewer {
+      width: 100%;
+      height: 80vh;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
-  <h1>Manuscript Viewer</h1>
-    <p id="instructions">
-    This interface contains the line-by-line alignments of a total of 259 poems from 13 different manuscripts of the Divan poet Bâkî (1526/27–1600).
-      Through this interface, users can view how individual lines of the same "core poem" appear in different manuscripts.
-      These variant poems for the "core poems" were clustered using TF-IDF scores, and users can explore the aligned lines of all the poems in each cluster.
-      Differences are highlighted at the word level: majority variants are marked in green, while minority variants are marked in yellow.
-      Users can also filter the poems by specific manuscripts or date range.
-  </p>
-  
+  <h1>Bâkî Manuscript Viewer</h1>
+  <ul id="instructions">
+    <li>This interface contains the line-by-line alignments of a total of 259 poems from 13 different manuscripts of the Divan poet Bâkî (1526/27–1600).</li>
+    <li>Through this interface, users can view how individual lines of the same "core poem" appear in different manuscripts.</li>
+    <li>These variant poems for the "core poems" were clustered using TF-IDF scores, and users can explore the aligned lines of all the poems in each cluster.</li>
+    <li>By clicking "Show differences", users can see variations among the manuscripts.</li>
+    <li>Differences are highlighted at the word level: majority variants are marked in green, while minority variants are marked in yellow.</li>
+    <li>Users can also filter the poems by specific manuscripts or date range.</li>
+  </ul>
+
   <label for="fileSelect">Choose a poem cluster:</label>
   <select id="fileSelect">
   </select>
@@ -25,53 +66,19 @@
   <iframe id="viewer" src="" frameborder="0"></iframe>
 
   <script>
-const files = [
-  'file1.html',
-  'file2.html',
-  'file3.html',
-  'file4.html',
-  'file5.html',
-  'file6.html',
-  'file7.html',
-  'file8.html',
-  'file9.html',
-  'file10.html',
-  'file11.html',
-  'file12.html',
-  'file13.html',
-  'file14.html',
-  'file15.html',
-  'file16.html',
-  'file17.html',
-  'file18.html',
-  'file19.html',
-  'file20.html',
-  'file21.html',
-  'file22.html',
-  'file23.html',
-  'file24.html',
-  'file25.html',
-  'file26.html',
-  'file27.html',
-  'file28.html',
-  'file29.html',
-  'file30.html',
-  'file31.html',
-  'file32.html',
-  'file33.html',
-  'file34.html'
-].map(f => 'html_files/' + f);
+    const files = Array.from({ length: 34 }, (_, i) => `html_files/file${i+1}.html`);
 
     const sel = document.getElementById('fileSelect');
-    files.forEach(path => {
+    files.forEach((path, index) => {
       const opt = document.createElement('option');
       opt.value = path;
-      opt.text  = path.split('/').pop();
+      opt.text = `Poem Cluster ${index + 1}`;
       sel.appendChild(opt);
     });
 
     sel.addEventListener('change', () => {
       document.getElementById('viewer').src = sel.value;
+      document.getElementById('viewer').scrollIntoView({ behavior: 'smooth' });
     });
 
     if (files.length) {
