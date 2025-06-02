@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bâkî Manuscript Viewer</title>
+  <title>Bâḳî Nüshaları Karşılaştırma Aracı</title>
   <style>
     /* ─── Reset & Base ─────────────────────────────────────────────────────────── */
     * {
@@ -28,13 +28,14 @@
 
     /* ─── Container ─────────────────────────────────────────────────────────────── */
     .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
+    max-width: 96vw;           /* Sayfa genişliğinin %96'sı */
+    margin: 0 auto;
+    padding: 0 1.5vw;          /* Sağ ve solda biraz boşluk bırak */
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
     header {
       background: #3b3b98;
       color: #fff;
@@ -52,7 +53,7 @@
 
     /* ─── Description Card ──────────────────────────────────────────────────── */
     .description-card {
-      padding: 20px;
+      padding: 16px 20px;
       border-bottom: 1px solid #ececec;
     }
     .description-card p {
@@ -137,8 +138,8 @@
   <div class="container">
     <!-- ─── Header ──────────────────────────────────────────────────────────────── -->
     <header>
-      <h1>Bâkî Yazma Vitrini</h1>
-      <p class="subtitle">Divan şairi Bâkî’nin 259 şiirinin 13 farklı nüsha üzerindeki dizin uyumlamaları</p>
+      <h1>Bâḳî Nüshaları Karşılaştırma Aracı</h1>
+      <p class="subtitle">Divan şairi Bâḳî’nin 13 farklı el yazmasındaki 259 şiiri üzerindeki hizalamaları</p>
     </header>
 
     <!-- ─── Description / Açıklama ──────────────────────────────────────────────── -->
@@ -150,6 +151,7 @@
       </p>
       <ul>
         <li>Her “çekirdek şiir” öncelikle <i>TF-IDF</i> skorlarına göre küme haline getirilmiştir.</li>
+        <li>Ardından, Janicki, Kallio ve Sarv (2023) tarafından önerilen ve Wagner-Fischer algoritmasına (Wagner & Fischer, 1974) dayanan bir yöntemle dizeler, ağırlıklı düzenleme mesafesi (weighted edit distance) kullanılarak hizalanmıştır.</li>
         <li>Her bir şiir, bir sütunda sunulmaktadır. Her bir şiirin başında eserin bibliografik özelliklerinin yanı sıra şiir için temel istatistikî bilgiler de mevcuttur.</li>
         <li>Nüshalar arasında <i>bigram</i> seviyesinde hesaplanan benzerlik değerlerini, her bir şiirin başında görebilirsiniz. Burada şiire en çok ve en az benzeyen şiirleri ve benzerlik oranlarını görebilirsiniz.</li>
         <li>Uyguladığınız filtrelerden sonra ekranda kalan şiirler arasındaki benzerliği tekrardan hesaplamak için ekranın üstünde bulunan "İstatistikleri Gizle"ye basıp ardından tekrardan "İstatistikleri Göster"e basabilirsiniz.</li>
@@ -166,13 +168,22 @@
         </p>
         <ul>
           <li>Each “core poem” was clustered based on TF-IDF scores.</li>
+          <li>Subsequently, the lines were aligned using a weighted edit distance method proposed by Janicki, Kallio, and Sarv (2023), which is based on the Wagner-Fischer algorithm (Wagner & Fischer, 1974).</li>
           <li>Each poem is presented in its own column. At the top of each poem, alongside the work’s bibliographic details, basic statistical information about the poem is also provided.</li>
           <li>You can view the bigram-based similarity between manuscripts at the top of each poem. Here, you can see which poems are most and least similar, along with their similarity percentages.</li>
-          <li>To recalculate the similarity among the poems that remain on the screen after applying filters, click “Hide Statistics” at the top of the screen and then click “Show Statistics” again.</li>
-          <li>Clicking “Show Differences” highlights majority/minority variants at the word level (majority in green, minority in yellow).</li>
-          <li>You can filter by specific manuscripts or by date range.</li>
+          <li>To recalculate the similarity among the poems that remain on the screen after applying filters, click <i>İstatistikleri Gizle</i> at the top of the screen and then click <i>İstatistikleri Göster</i> again.</li>
+          <li>Clicking <i>Farklılıkları Göster</i> highlights majority/minority variants at the word level (majority in green, minority in yellow).</li>
+          <li>You can filter by specific manuscripts, date range, scriber name, a specific word or phrase.</li>
         </ul>
       </details>
+        <h3 style="margin-top: 1.5em;">Kaynakça / References</h3>
+
+        <ul>
+          <li>Janicki, M., Kallio, K., & Sarv, M. (2023). Exploring Finnic written oral folk poetry through string similarity. <i>Digital Scholarship in the Humanities, 38<i>(1), 180–194. https://doi.org/10.1093/llc/fqac034</li>
+          <li>Wagner, R. A., & Fischer, M. J. (1974). The string-to-string correction problem. <i>Journal of the ACM, 21<i>(1), 168–173.</li>
+         
+        </ul>
+   
     </section>
 
     <!-- ─── Viewer Section ────────────────────────────────────────────────────── -->
@@ -187,7 +198,7 @@
 
     <!-- ─── Footer ───────────────────────────────────────────────────────────────── -->
     <footer>
-      2025 | Bâkî Manuscript Viewer
+      2025 | Baki Projesi / Bâḳî Nüshaları Karşılaştırma Aracı
     </footer>
   </div>
 

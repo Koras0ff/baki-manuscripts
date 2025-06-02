@@ -34,7 +34,7 @@
 
   function toggleDiff() {
   diffMode = !diffMode;
-  document.getElementById('diff-btn').innerText = diffMode ? 'Hide Differences' : 'Show Differences';
+  document.getElementById('diff-btn').innerText = diffMode ? 'Farklılıkları Gizle' : 'Farklılıkları Göster';
 
   if (diffMode) {
     // Farkları vurgulama
@@ -54,7 +54,7 @@
           
   function toggleStats() {
     statsMode = !statsMode;
-    document.getElementById('stats-btn').innerText = statsMode ? 'Hide Statistics' : 'Show Statistics';
+    document.getElementById('stats-btn').innerText = statsMode ? 'İstatistikleri Gizle' : 'İstatistikleri Göster';
 
     // O AN GÖRÜNÜR OLAN SÜTUNLAR
     const visibleTHs = Array.from(document.querySelectorAll('thead tr th'))
@@ -240,7 +240,7 @@
     document.getElementById('word-filter').value = '';
     document.querySelector('input[name="word-mode"][value="exact"]').checked = true;
     diffMode = false;
-    document.getElementById('diff-btn').innerText = 'Show Differences';
+    document.getElementById('diff-btn').innerText = 'Farklılıkları Göster';
     document.querySelectorAll('tbody tr').forEach(tr => {
       Array.from(tr.children).forEach(td => td.innerHTML = td.dataset.raw);
     });
@@ -327,9 +327,9 @@
 </head>
 <body>
 
-<div><button id='diff-btn' onclick='toggleDiff()'>Show Differences</button></div>
-<div><button id='stats-btn' onclick='toggleStats()'>Show Statistics</button></div>
-<div><button id='reset-btn' onclick='resetFilters()'>Reset Filters</button></div>
+<div><button id='diff-btn' onclick='toggleDiff()'>Farklılıkları Göster</button></div>
+<div><button id='stats-btn' onclick='toggleStats()'>İstatistikleri Göster</button></div>
+<div><button id='reset-btn' onclick='resetFilters()'>Tüm Filtreleri Sil</button></div>
 
 <div class='filters'>
 
