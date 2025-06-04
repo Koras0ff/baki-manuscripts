@@ -52,12 +52,13 @@
     font-size: 0.95em;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
-  th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: left;
-    vertical-align: top;
-  }
+th, td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+  min-width: 250px; /* Burayı ihtiyacınıza göre artırabilirsiniz */
+}
   th {
     background-color: #f9f9f9;
   }
@@ -65,12 +66,18 @@
   /* ---------------------------
      Fark Vurgulama (Diff) ve Ana Kelime (Majority)
      --------------------------- */
-  .diff-word {
-    background-color: #f6e58d;
-  }
-  .majority-word {
-    background-color: #badc58;
-  }
+.diff-word {
+  background-color: #ffc107;  /* Düzgün, parlak bir sarı tonu */
+  color: #000;                /* Siyah metinle okunaklığı artırır */
+  padding: 2px 4px;           /* Kelime çevresine biraz hava bırakır */
+  border-radius: 2px;         /* Hafif yuvarlatılmış köşeler */
+}
+.majority-word {
+  background-color: #28a745;
+  color: #fff;             /* Opsiyonel: beyaz metinle kontrastı artırır */
+  padding: 2px 4px;        /* Opsiyonel: kelime çevresine biraz hava bırakır */
+  border-radius: 2px;      /* Opsiyonel: hafif yuvarlatılmış köşeler */
+}
 
   /* ---------------------------
      İstatistikler Bölümü
@@ -111,9 +118,9 @@ tbody td:hover {
 /* ---------------------------
    Zebra Şeritleme (Alternating Rows)
    --------------------------- */
-tbody tr:nth-child(odd) {
-  background-color: #fafafa;
-}
+tbody tr:nth-child(odd) { background-color: #f7f7f7; }
+tbody tr:nth-child(even) { background-color: #ffffff; }
+
 
 /* ---------------------------
    Responsive Tasarım İçin Öneri
@@ -236,45 +243,81 @@ function toggleStats() {
 }
 
 
+
+
   function applyDiffs() {
     document.querySelectorAll('tbody tr').forEach(tr => {
-      const visible = Array.from(tr.children)
-        .filter(td => td.style.display !== 'none')
-        .filter(td => td.dataset.raw && td.dataset.raw.trim() !== '---');
-      if (visible.length < 2) {
-        visible.forEach(td => td.innerHTML = td.dataset.raw);
+      // 1) Görünür ve veri içeren hücreleri al
+      const visibleTDs = Array.from(tr.children)
+        .filter(td => td.style.display !== 'none' && td.dataset.raw.trim() !== '---');
+      if (visibleTDs.length < 2) {
+        // Tek hücre varsa orijinal raw içeriği koy
+        visibleTDs.forEach(td => td.innerHTML = td.dataset.raw);
         return;
       }
-      visible.forEach(td => td.innerHTML = td.dataset.raw);
-      const counts = {};
-      visible.forEach(td => {
-        counts[td.dataset.raw] = (counts[td.dataset.raw] || 0) + 1;
-      });
-      let majorityText = visible[0].dataset.raw, maxc = 0;
-      for (let txt in counts) {
-        if (counts[txt] > maxc) { maxc = counts[txt]; majorityText = txt; }
+
+      // 2) Her hücrenin metnini kelimelerine ayır
+      const allCellWords = visibleTDs.map(td =>
+        td.dataset.raw.normalize('NFC').split(/\s+/)
+      );
+
+      // 3) Satırdaki maksimum kelime sayısını bul
+      const maxWords = Math.max(...allCellWords.map(ws => ws.length));
+
+      // 4) Her pozisyondaki kelimelerin frekansını hesaplayıp çoğunluğu (majority) tespit et
+      const majorityWords = {};      // { index: 'çoğunlukKelimesi', … }
+      const diffPositions  = new Set(); // Farklılık olan pozisyonlar
+
+      for (let i = 0; i < maxWords; i++) {
+        const freq = {};            // { kelime: sayı, … }
+        allCellWords.forEach(ws => {
+          const w = ws[i] || '';
+          freq[w] = (freq[w] || 0) + 1;
+        });
+        // En çok görülen kelimeyi bul
+        let bestWord = '';
+        let bestCount = 0;
+        for (let [w, cnt] of Object.entries(freq)) {
+          if (cnt > bestCount) {
+            bestCount = cnt;
+            bestWord  = w;
+          }
+        }
+        majorityWords[i] = bestWord;
+
+        // Eğer birden fazla farklı kelime varsa, diffPositions’a ekle
+        if (Object.keys(freq).length > 1) {
+          diffPositions.add(i);
+        }
       }
-      const majWords = majorityText.split(/\s+/);
-      const diffPositions = new Set();
-      visible.forEach(td => {
-        if (td.dataset.raw !== majorityText) {
-          const words = td.dataset.raw.split(/\s+/);
-          words.forEach((w, i) => { if (majWords[i] !== w) diffPositions.add(i); });
-        }
-      });
-      visible.forEach(td => {
-        if (td.dataset.raw === majorityText) {
-          td.innerHTML = majWords
-            .map((w, i) => diffPositions.has(i) ? `<span class='majority-word'>${w}</span>` : w)
-            .join(' ');
-        } else {
-          const ref = majorityText.normalize('NFC');
-          const txt = td.dataset.raw.normalize('NFC');
-          td.innerHTML = wordDiff(ref, txt);
-        }
+
+      // 5) Hücreleri dolaş, her kelime pozisyonunu şu şekilde vurgula:
+      //    • diffPositions içinde ise:
+      //       – Kelime === majorityWords[i] → class="majority-word" (yeşil)
+      //       – Aksi halde → class="diff-word" (sarı)
+      //    • diffPositions dışında ise: normal bırak
+      visibleTDs.forEach(td => {
+        const words = td.dataset.raw.normalize('NFC').split(/\s+/);
+        td.innerHTML = words
+          .map((w, idx) => {
+            if (diffPositions.has(idx)) {
+              if (w === majorityWords[idx]) {
+                return `<span class='majority-word'>${w}</span>`;
+              } else {
+                return `<span class='diff-word'>${w}</span>`;
+              }
+            } else {
+              return w;
+            }
+          })
+          .join(' ');
       });
     });
   }
+  
+    window.addEventListener('load', () => {
+    applyDiffs();
+  });
 
   function wordDiff(refText, text) {
     const refNorm = refText.normalize('NFC');
